@@ -1,81 +1,38 @@
 #include <stdafx.hpp>
+#include "remote_offsets.hpp"
 
 bool offsets::initialize( )
 {
-	// csgo_input
-	{
-		const auto initial = g::memory.find_pattern( g::modules.client, "48 89 05 ? ? ? ? 0F 57 C0 0F 11 05" );
-		if ( !initial )
-		{
-			return false;
-		}
-
-		csgo_input = g::memory.resolve_rip( initial );
-		if ( !csgo_input )
-		{
-			return false;
-		}
-	}
-
-	// entity_list
-	{
-		const auto initial = g::memory.find_pattern( g::modules.client, "48 89 35 ? ? ? ? 48 85 F6" );
-		if ( !initial )
-		{
-			return false;
-		}
-
-		entity_list = g::memory.resolve_rip( initial );
-		if ( !entity_list )
-		{
-			return false;
-		}
-	}
-
-	// local_player_controller
-	{
-		const auto initial = g::memory.find_pattern( g::modules.client, "48 8B 05 ? ? ? ? 41 89 BE" );
-		if ( !initial )
-		{
-			return false;
-		}
-
-		local_player_controller = g::memory.resolve_rip( initial );
-		if ( !local_player_controller )
-		{
-			return false;
-		}
-	}
-
-	// global_vars
-	{
-		const auto initial = g::memory.find_pattern( g::modules.client, "48 89 15 ? ? ? ? 48 89 42" );
-		if ( !initial )
-		{
-			return false;
-		}
-
-		global_vars = g::memory.resolve_rip( initial );
-		if ( !global_vars )
-		{
-			return false;
-		}
-	}
-
-	// view_matrix
-	{
-		const auto initial = g::memory.find_pattern( g::modules.client, "C6 86 F0 12 00 00 01 48 8D 0D ? ? ? ?" );
-		if ( !initial )
-		{
-			return false;
-		}
-
-		view_matrix = g::memory.resolve_rip( initial + 0x7 );
-		if ( !view_matrix )
-		{
-			return false;
-		}
-	}
-
-	return true;
+    // Загружаем оффсеты из интернета
+    if ( !g::offsets_remote.fetch( ) )
+    {
+        g::console.error( "failed to fetch remote offsets" );
+        return false;
+    }
+    
+    // Разрешаем адреса через базу модуля + смещение
+    csgo_input = g::offsets_remote.get( "client_dll", "dwCSGOInput" );
+    csgo_input = csgo_input ? ( g::modules.client + csgo_input ) : 0;
+    
+    entity_list = g::offsets_remote.get( "client_dll", "dwEntityList" );
+    entity_list = entity_list ? ( g::modules.client + entity_list ) : 0;
+    
+    local_player_controller = g::offsets_remote.get( "client_dll", "dwLocalPlayerController" );
+    local_player_controller = local_player_controller ? ( g::modules.client + local_player_controller ) : 0;
+    
+    global_vars = g::offsets_remote.get( "client_dll", "dwGlobalVars" );
+    global_vars = global_vars ? ( g::modules.client + global_vars ) : 0;
+    
+    view_matrix = g::offsets_remote.get( "client_dll", "dwViewMatrix" );
+    view_matrix = view_matrix ? ( g::modules.client + view_matrix ) : 0;
+    
+    // Проверяем что всё ок
+    if ( !csgo_input || !entity_list || !local_player_controller || !global_vars || !view_matrix )
+    {
+        g::console.error( "some offsets failed to resolve" );
+        return false;
+    }
+    
+    g::console.success( "offsets initialized (remote)" );
+    return true;
 }
