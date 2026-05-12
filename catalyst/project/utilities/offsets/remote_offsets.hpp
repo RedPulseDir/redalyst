@@ -12,12 +12,13 @@ public:
     bool fetch( );
     
     std::uintptr_t get( std::string_view module, std::string_view name ) const;
+    std::uintptr_t resolve( std::string_view module, std::string_view name, std::uintptr_t module_base ) const;
     
     bool is_ready( ) const { return m_ready; }
     
 private:
+    bool fetch_url( const std::string& url, std::string& output );
     bool parse_offsets( const std::string& content );
-    std::uintptr_t resolve( std::string_view module, std::string_view name ) const;
     
     std::unordered_map<std::string, std::unordered_map<std::string, std::ptrdiff_t>> m_offsets;
     bool m_ready{ false };
