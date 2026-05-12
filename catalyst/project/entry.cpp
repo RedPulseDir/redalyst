@@ -1,4 +1,7 @@
 #include <stdafx.hpp>
+#include <timeapi.h>
+
+#pragma comment(lib, "winmm.lib")
 
 int main( )
 {
@@ -27,7 +30,6 @@ int main( )
             return 1;
         }
         
-        // Offsets теперь грузятся из интернета через WinHTTP
         if ( !g::offsets.initialize( ) )
         {
             return 1;
