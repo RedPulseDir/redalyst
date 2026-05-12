@@ -20,128 +20,89 @@ namespace detail {
         return static_cast< std::ptrdiff_t >( std::stoull( num, nullptr, 16 ) );
     }
     
-} // namespace detail
-
-bool remote_offsets::fetch_url( const std::string& url, std::string& output )
-{
-    // Parse URL
-    URL_COMPONENTS url_comp{};
-    url_comp.dwStructSize = sizeof( url_comp );
-    
-    wchar_t hostname[ 256 ]{};
-    wchar_t url_path[ 1024 ]{};
-    
-    url_comp.lpszHostName = hostname;
-    url_comp.dwHostNameLength = sizeof( hostname ) / sizeof( wchar_t );
-    url_comp.lpszUrlPath = url_path;
-    url_comp.dwUrlPathLength = sizeof( url_path ) / sizeof( wchar_t );
-    
-    std::wstring wurl( url.begin( ), url.end( ) );
-    
-    if ( !WinHttpCrackUrl( wurl.c_str( ), 0, 0, &url_comp ) )
-        return false;
-    
-    bool is_https = ( url_comp.nScheme == INTERNET_SCHEME_HTTPS );
-    
-    HINTERNET session = WinHttpOpen( L"Catalyst/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0 );
-    if ( !session )
-        return false;
-    
-    DWORD flags = is_https ? WINHTTP_FLAG_SECURE : 0;
-    HINTERNET connect = WinHttpConnect( session, hostname, url_comp.nPort, 0 );
-    if ( !connect )
+    static std::string fetch_url_winhttp( const std::string& url )
     {
-        WinHttpCloseHandle( session );
-        return false;
-    }
-    
-    HINTERNET request = WinHttpOpenRequest( connect, L"GET", url_path, NULL, NULL, NULL, flags );
-    if ( !request )
-    {
-        WinHttpCloseHandle( connect );
-        WinHttpCloseHandle( session );
-        return false;
-    }
-    
-    // Send request
-    if ( !WinHttpSendRequest( request, NULL, 0, NULL, 0, 0, 0 ) )
-    {
-        WinHttpCloseHandle( request );
-        WinHttpCloseHandle( connect );
-        WinHttpCloseHandle( session );
-        return false;
-    }
-    
-    if ( !WinHttpReceiveResponse( request, NULL ) )
-    {
-        WinHttpCloseHandle( request );
-        WinHttpCloseHandle( connect );
-        WinHttpCloseHandle( session );
-        return false;
-    }
-    
-    // Read response
-    DWORD bytes_available = 0;
-    std::string response;
-    char buffer[ 4096 ];
-    
-    while ( WinHttpQueryDataAvailable( request, &bytes_available ) && bytes_available > 0 )
-    {
-        DWORD bytes_read = 0;
-        DWORD to_read = ( bytes_available < sizeof( buffer ) ) ? bytes_available : sizeof( buffer );
+        URL_COMPONENTS url_comp{};
+        url_comp.dwStructSize = sizeof( url_comp );
         
-        if ( WinHttpReadData( request, buffer, to_read, &bytes_read ) )
+        wchar_t hostname[ 256 ]{};
+        wchar_t url_path[ 1024 ]{};
+        
+        url_comp.lpszHostName = hostname;
+        url_comp.dwHostNameLength = sizeof( hostname ) / sizeof( wchar_t );
+        url_comp.lpszUrlPath = url_path;
+        url_comp.dwUrlPathLength = sizeof( url_path ) / sizeof( wchar_t );
+        
+        std::wstring wurl( url.begin( ), url.end( ) );
+        
+        if ( !WinHttpCrackUrl( wurl.c_str( ), 0, 0, &url_comp ) )
+            return {};
+        
+        bool is_https = ( url_comp.nScheme == INTERNET_SCHEME_HTTPS );
+        
+        HINTERNET session = WinHttpOpen( L"Catalyst/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0 );
+        if ( !session )
+            return {};
+        
+        DWORD flags = is_https ? WINHTTP_FLAG_SECURE : 0;
+        HINTERNET connect = WinHttpConnect( session, hostname, url_comp.nPort, 0 );
+        if ( !connect )
         {
-            response.append( buffer, bytes_read );
+            WinHttpCloseHandle( session );
+            return {};
         }
-        else
+        
+        HINTERNET request = WinHttpOpenRequest( connect, L"GET", url_path, NULL, NULL, NULL, flags );
+        if ( !request )
         {
-            break;
+            WinHttpCloseHandle( connect );
+            WinHttpCloseHandle( session );
+            return {};
         }
-    }
-    
-    WinHttpCloseHandle( request );
-    WinHttpCloseHandle( connect );
-    WinHttpCloseHandle( session );
-    
-    output = std::move( response );
-    return !output.empty( );
-}
-
-bool remote_offsets::parse_offsets( const std::string& content )
-{
-    // Regex for module: namespace client_dll { ... }
-    std::regex module_pattern( R"(namespace\s+(\w+_dll)\s*\{([^}]*)\})", std::regex::dotall );
-    std::regex offset_pattern( R"(constexpr\s+std::ptrdiff_t\s+(\w+)\s*=\s*(0x[0-9A-Fa-f]+);)" );
-    
-    auto it = std::sregex_iterator( content.begin( ), content.end( ), module_pattern );
-    auto end = std::sregex_iterator( );
-    
-    bool any = false;
-    
-    for ( ; it != end; ++it )
-    {
-        std::string module_name = ( *it )[ 1 ].str( );
-        std::string module_body = ( *it )[ 2 ].str( );
         
-        auto& offsets_map = m_offsets[ module_name ];
-        
-        auto off_it = std::sregex_iterator( module_body.begin( ), module_body.end( ), offset_pattern );
-        auto off_end = std::sregex_iterator( );
-        
-        for ( ; off_it != off_end; ++off_it )
+        if ( !WinHttpSendRequest( request, NULL, 0, NULL, 0, 0, 0 ) )
         {
-            std::string name = ( *off_it )[ 1 ].str( );
-            std::string value_str = ( *off_it )[ 2 ].str( );
-            std::ptrdiff_t value = detail::parse_hex( value_str );
+            WinHttpCloseHandle( request );
+            WinHttpCloseHandle( connect );
+            WinHttpCloseHandle( session );
+            return {};
+        }
+        
+        if ( !WinHttpReceiveResponse( request, NULL ) )
+        {
+            WinHttpCloseHandle( request );
+            WinHttpCloseHandle( connect );
+            WinHttpCloseHandle( session );
+            return {};
+        }
+        
+        DWORD bytes_available = 0;
+        std::string response;
+        char buffer[ 4096 ];
+        
+        while ( WinHttpQueryDataAvailable( request, &bytes_available ) && bytes_available > 0 )
+        {
+            DWORD bytes_read = 0;
+            DWORD to_read = ( bytes_available < sizeof( buffer ) ) ? bytes_available : sizeof( buffer );
             
-            offsets_map[ name ] = value;
-            any = true;
+            if ( WinHttpReadData( request, buffer, to_read, &bytes_read ) )
+            {
+                response.append( buffer, bytes_read );
+            }
+            else
+            {
+                break;
+            }
         }
+        
+        WinHttpCloseHandle( request );
+        WinHttpCloseHandle( connect );
+        WinHttpCloseHandle( session );
+        
+        return response;
     }
     
-    return any;
-}
+} // namespace detail
 
 bool remote_offsets::fetch( )
 {
@@ -154,8 +115,10 @@ bool remote_offsets::fetch( )
     
     for ( const auto& url : urls )
     {
-        std::string content;
-        if ( !fetch_url( url, content ) )
+        g::console.print( "Fetching: {}", url );
+        std::string content = detail::fetch_url_winhttp( url );
+        
+        if ( content.empty( ) )
         {
             g::console.error( "Failed to fetch offsets from: {}", url );
             return false;
@@ -177,6 +140,64 @@ bool remote_offsets::fetch( )
     g::console.success( "Remote offsets loaded ({} modules)", m_offsets.size( ) );
     
     return true;
+}
+
+bool remote_offsets::parse_offsets( const std::string& content )
+{
+    // Pattern for module: namespace client_dll { ... }
+    // Without dotall flag, using manual approach - find modules by scanning line by line
+    
+    std::regex module_start( R"(namespace\s+(\w+_dll)\s*\()" );
+    std::regex offset_pattern( R"(constexpr\s+std::ptrdiff_t\s+(\w+)\s*=\s*(0x[0-9A-Fa-f]+);)" );
+    
+    std::istringstream stream( content );
+    std::string line;
+    std::string current_module;
+    bool in_module = false;
+    int brace_count = 0;
+    
+    while ( std::getline( stream, line ) )
+    {
+        // Check for module start
+        std::smatch module_match;
+        if ( std::regex_search( line, module_match, module_start ) && !in_module )
+        {
+            current_module = module_match[ 1 ].str( );
+            in_module = true;
+            brace_count = 0;
+            continue;
+        }
+        
+        if ( in_module )
+        {
+            // Count braces to know when module ends
+            for ( char c : line )
+            {
+                if ( c == '{' ) brace_count++;
+                if ( c == '}' ) brace_count--;
+            }
+            
+            if ( brace_count < 0 )
+            {
+                in_module = false;
+                current_module.clear( );
+                continue;
+            }
+            
+            // Parse offsets within this module
+            std::smatch offset_match;
+            if ( std::regex_search( line, offset_match, offset_pattern ) )
+            {
+                std::string name = offset_match[ 1 ].str( );
+                std::string value_str = offset_match[ 2 ].str( );
+                std::ptrdiff_t value = detail::parse_hex( value_str );
+                
+                m_offsets[ current_module ][ name ] = value;
+            }
+        }
+    }
+    
+    return !m_offsets.empty( );
 }
 
 std::uintptr_t remote_offsets::get( std::string_view module, std::string_view name ) const
