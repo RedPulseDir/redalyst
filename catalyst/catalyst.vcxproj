@@ -17,7 +17,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -33,7 +33,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>../bin/</OutDir>
     <IntDir>../bin/intermediates/</IntDir>
-    <IncludePath>../catalyst/project/;../catalyst/project/external/zdraw/external/freetype/;$(IncludePath)</IncludePath>
+    <IncludePath>../catalyst/project/;../catalyst/project/external/zdraw/external/freetype/;../catalyst/project/external/curl/;$(IncludePath)</IncludePath>
+    <LibraryPath>../catalyst/project/external/curl/lib/;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -41,7 +42,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;CURL_STATICLIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp23</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -55,6 +56,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
+      <AdditionalDependencies>winmm.lib;d3d11.lib;d3dcompiler.lib;windowscodecs.lib;dwmapi.lib;libcurl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -86,6 +88,7 @@
     <ClCompile Include="project\utilities\memory\memory.cpp" />
     <ClCompile Include="project\utilities\modules\modules.cpp" />
     <ClCompile Include="project\utilities\offsets\offsets.cpp" />
+    <ClCompile Include="project\utilities\offsets\remote_offsets.cpp" />
     <ClCompile Include="project\utilities\math\math.cpp" />
     <ClCompile Include="project\core\render\render.cpp" />
     <ClCompile Include="project\core\threads\threads.cpp" />
@@ -217,8 +220,8 @@
     <ClInclude Include="project\external\zdraw\external\freetype\ft2build.h" />
     <ClInclude Include="project\external\zdraw\external\shaders\shaders.hpp" />
     <ClInclude Include="project\external\zdraw\external\unordered_dense.hpp" />
-    <ClInclude Include="project\external\zdraw\zdraw.hpp" />
     <ClInclude Include="project\external\zdraw\zui\zui.hpp" />
+    <ClInclude Include="project\external\zdraw\zdraw.hpp" />
     <ClInclude Include="project\resources\fonts\mochi.hpp" />
     <ClInclude Include="project\resources\fonts\pixel7.hpp" />
     <ClInclude Include="project\resources\fonts\pretzel.hpp" />
@@ -231,6 +234,7 @@
     <ClInclude Include="project\utilities\memory\memory.hpp" />
     <ClInclude Include="project\utilities\modules\modules.hpp" />
     <ClInclude Include="project\utilities\offsets\offsets.hpp" />
+    <ClInclude Include="project\utilities\offsets\remote_offsets.hpp" />
     <ClInclude Include="project\utilities\math\math.hpp" />
     <ClInclude Include="project\utilities\fnv1a.hpp" />
     <ClInclude Include="project\core\settings.hpp" />
