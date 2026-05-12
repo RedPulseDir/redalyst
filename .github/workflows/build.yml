@@ -20,54 +20,13 @@ jobs:
     - name: Setup Visual Studio
       uses: microsoft/setup-msbuild@v2
     
-    - name: Setup vcpkg (if needed)
-      run: |
-        git clone https://github.com/Microsoft/vcpkg.git
-        .\vcpkg\bootstrap-vcpkg.bat
-        .\vcpkg\vcpkg integrate install
-      shell: cmd
-    
-    - name: Restore NuGet packages
-      run: nuget restore catalyst.slnx
-      shell: cmd
-    
     - name: Build Release x64
-      run: msbuild catalyst.slnx /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v145 /m
+      run: msbuild catalyst.slnx /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /m
       shell: cmd
     
-    - name: Upload artifact (binary)
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: catalyst-release
         path: bin/
         retention-days: 30
-    
-    - name: Upload PDB (optional, for debugging)
-      uses: actions/upload-artifact@v4
-      with:
-        name: catalyst-pdb
-        path: bin/*.pdb
-        retention-days: 7
-
-  # Опционально: build debug
-  build-debug:
-    runs-on: windows-latest
-    needs: build
-    if: false  # отключено по умолчанию
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v2
-    
-    - name: Build Debug x64
-      run: msbuild catalyst.slnx /p:Configuration=Debug /p:Platform=x64 /p:PlatformToolset=v145 /m
-    
-    - name: Upload debug artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: catalyst-debug
-        path: bin/
-        retention-days: 7
