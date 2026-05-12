@@ -20,8 +20,20 @@ jobs:
     - name: Setup Visual Studio
       uses: microsoft/setup-msbuild@v2
     
+    - name: Install vcpkg
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git
+        .\vcpkg\bootstrap-vcpkg.bat
+        .\vcpkg\vcpkg integrate install
+      shell: cmd
+    
+    - name: Install libcurl via vcpkg
+      run: |
+        .\vcpkg\vcpkg install curl:x64-windows-static
+      shell: cmd
+    
     - name: Build Release x64
-      run: msbuild catalyst.slnx /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /m
+      run: msbuild catalyst.slnx /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /p:VcpkgRoot=.\vcpkg\installed\x64-windows-static /m
       shell: cmd
     
     - name: Upload artifact
